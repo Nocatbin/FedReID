@@ -7,7 +7,9 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 import copy
 from optimization import Optimization
-class Client():
+
+
+class Client:
     def __init__(self, cid, data, device, project_dir, model_name, local_epoch, lr, batch_size, drop_rate, stride):
         self.cid = cid
         self.project_dir = project_dir
@@ -17,15 +19,18 @@ class Client():
         self.local_epoch = local_epoch
         self.lr = lr
         self.batch_size = batch_size
-        
+
         self.dataset_sizes = self.data.train_dataset_sizes[cid]
         self.train_loader = self.data.train_loaders[cid]
 
         self.full_model = get_model(self.data.train_class_sizes[cid], drop_rate, stride)
-        self.classifier = self.full_model.classifier.classifier
+        # extract full connection layer from the model
+        self.classifier = self.full_model.classifier.classifier  # full connect layer
+        # replace the full connection layer of the model with null
         self.full_model.classifier.classifier = nn.Sequential()
+        # model without full connection layer
         self.model = self.full_model
-        self.distance=0
+        self.distance = 0
         self.optimization = Optimization(self.train_loader, self.device)
         # print("class name size",class_names_size[cid])
 
@@ -33,6 +38,7 @@ class Client():
         self.y_err = []
         self.y_loss = []
 
+        # federated_model.state_dict() contains model params
         self.model.load_state_dict(federated_model.state_dict())
         self.model.classifier.classifier = self.classifier
         self.old_classifier = copy.deepcopy(self.classifier)
@@ -40,7 +46,7 @@ class Client():
 
         optimizer = get_optimizer(self.model, self.lr)
         scheduler = lr_scheduler.StepLR(optimizer, step_size=40, gamma=0.1)
-        
+
         criterion = nn.CrossEntropyLoss()
 
         since = time.time()
@@ -54,7 +60,7 @@ class Client():
             self.model.train(True)
             running_loss = 0.0
             running_corrects = 0.0
-            
+
             for data in self.train_loader:
                 inputs, labels = data
                 b, c, h, w = inputs.shape
@@ -65,7 +71,7 @@ class Client():
                     labels = Variable(labels.cuda().detach())
                 else:
                     inputs, labels = Variable(inputs), Variable(labels)
-                
+
                 optimizer.zero_grad()
 
                 outputs = self.model(inputs)
@@ -86,7 +92,7 @@ class Client():
                 'train', epoch_loss, epoch_acc))
 
             self.y_loss.append(epoch_loss)
-            self.y_err.append(1.0-epoch_acc)
+            self.y_err.append(1.0 - epoch_acc)
 
             time_elapsed = time.time() - since
             print('Client', self.cid, ' Training complete in {:.0f}m {:.0f}s'.format(
@@ -97,11 +103,10 @@ class Client():
             time_elapsed // 60, time_elapsed % 60))
 
         # save_network(self.model, self.cid, 'last', self.project_dir, self.model_name, gpu_ids)
-        
+
         self.classifier = self.model.classifier.classifier
         self.distance = self.optimization.cdw_feature_distance(federated_model, self.old_classifier, self.model)
         self.model.classifier.classifier = nn.Sequential()
-
 
     def generate_soft_label(self, x, regularization):
         return self.optimization.kd_generate_soft_label(self.model, x, regularization)

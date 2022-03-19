@@ -80,6 +80,7 @@ class Server():
         loss = []
         cos_distance_weights = []
         data_sizes = []
+        # random let (num_of_clients) clients to train
         current_client_list = random.sample(self.client_list, self.num_of_clients)
         for i in current_client_list:
             self.clients[i].train(self.federated_model, use_cuda)
