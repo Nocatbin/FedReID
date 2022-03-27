@@ -142,3 +142,9 @@ cython_debug/
 # data folder
 data/
 data_preprocess/data/
+
+# model folder
+model/
+
+# setting folder
+.idea/

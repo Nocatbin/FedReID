@@ -21,11 +21,13 @@ import pretrainedmodels
 
 
 ######################################################################
+# Fills the input Tensor with values according to the method described in
+# Delving deep into rectifiers: Surpassing human-level performance on ImageNet classification - He, K. et al. (2015)
 def weights_init_kaiming(m):
     classname = m.__class__.__name__
     # print(classname)
     if classname.find('Conv') != -1:
-        init.kaiming_normal_(m.weight.data, a=0, mode='fan_in')  # For old pytorch, you may use kaiming_normal.
+        init.kaiming_normal_(m.weight.data, a=0, mode='fan_in')
     elif classname.find('Linear') != -1:
         init.kaiming_normal_(m.weight.data, a=0, mode='fan_out')
         init.constant_(m.bias.data, 0.0)
@@ -60,6 +62,7 @@ class ClassBlock(nn.Module):
         if droprate > 0:
             add_block += [nn.Dropout(p=droprate)]
         add_block = nn.Sequential(*add_block)
+        # apply function weights_init_kaiming() to all submodules
         add_block.apply(weights_init_kaiming)
 
         classifier = []
@@ -95,6 +98,7 @@ class ft_net(nn.Module):
             model_ft.layer4[0].conv2.stride = (1, 1)
         model_ft.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.model = model_ft
+        # 2048 = output of RESNET50 before classifier
         self.classifier = ClassBlock(2048, class_num, droprate)
 
     def forward(self, x):

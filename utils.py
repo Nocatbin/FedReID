@@ -39,6 +39,8 @@ def save_network(network, cid, epoch_label, project_dir, name, gpu_ids):
         network.cuda(gpu_ids[0])
 
 
+# class_sizes only affects classifier(aka full connection layer)
+# saved params(state_dict)
 def get_model(class_sizes, drop_rate, stride):
     model = ft_net(class_sizes, drop_rate, stride)
     return model

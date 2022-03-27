@@ -38,11 +38,13 @@ def run(args):
                 for img in views:
                     vec.append(img)
             np.random.shuffle(vec)
+            # 每个ID只留一张图作训练， 剩下的放在res里，保证训练集中至少有一张图
             train.append(osp.join(args.dataset_dir, vec[0]))
             for img in vec[1:]:
                 res.append(img)
         num_val = int((len(train) + len(res)) * args.val_ratio)
         np.random.shuffle(res)
+        # 按 val_ratio 划分训练集和验证集 val%为验证集
         for img in res[:num_val]:
             val.append(osp.join(args.dataset_dir, img))
         for img in res[num_val:]:
@@ -53,6 +55,7 @@ def run(args):
         # gallery's. First half views are probe, others are gallery.
         assert len(set(split['test_probe']) - set(split['test_gallery'])) == 0
         for person in identities[split['test_probe']]:
+            # // 整数除法， / 浮点除法
             for views in person[:len(person) // 2]:
                 for img in views:
                     test_probe.append(osp.join(args.dataset_dir, img))

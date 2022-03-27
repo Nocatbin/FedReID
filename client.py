@@ -24,29 +24,37 @@ class Client:
         self.train_loader = self.data.train_loaders[cid]
 
         self.full_model = get_model(self.data.train_class_sizes[cid], drop_rate, stride)
-        # extract full connection layer from the model
+        # full model contains add_block & classifier
+        # backup origin classifier
         self.classifier = self.full_model.classifier.classifier  # full connect layer
         # replace the full connection layer of the model with null
         self.full_model.classifier.classifier = nn.Sequential()
         # model without full connection layer
         self.model = self.full_model
+        # print(self.model)
         self.distance = 0
         self.optimization = Optimization(self.train_loader, self.device)
         # print("class name size",class_names_size[cid])
 
+    # training based on federated_model's params
     def train(self, federated_model, use_cuda):
         self.y_err = []
         self.y_loss = []
 
         # federated_model.state_dict() contains model params
         self.model.load_state_dict(federated_model.state_dict())
+        # return the classifier to the self.model.classifier.classifier
+        # ensure the correct load of params
         self.model.classifier.classifier = self.classifier
         self.old_classifier = copy.deepcopy(self.classifier)
         self.model = self.model.to(self.device)
 
         optimizer = get_optimizer(self.model, self.lr)
+        # drop the learning rate(lr * gamma) every 40 epoch
         scheduler = lr_scheduler.StepLR(optimizer, step_size=40, gamma=0.1)
 
+        # 分类问题使用交叉熵损失函数
+        # torch.nn.TripletMarginLoss
         criterion = nn.CrossEntropyLoss()
 
         since = time.time()
@@ -55,8 +63,6 @@ class Client:
         for epoch in range(self.local_epoch):
             print('Epoch {}/{}'.format(epoch, self.local_epoch - 1))
             print('-' * 10)
-
-            scheduler.step()
             self.model.train(True)
             running_loss = 0.0
             running_corrects = 0.0
@@ -65,8 +71,10 @@ class Client:
                 inputs, labels = data
                 b, c, h, w = inputs.shape
                 if b < self.batch_size:
+                    # skipping last data batch
                     continue
                 if use_cuda:
+                    # .detach() method remove grad from tensor
                     inputs = Variable(inputs.cuda().detach())
                     labels = Variable(labels.cuda().detach())
                 else:
@@ -77,13 +85,16 @@ class Client:
                 outputs = self.model(inputs)
                 _, preds = torch.max(outputs.data, 1)
                 loss = criterion(outputs, labels)
+                # calc grad
                 loss.backward()
-
+                # back propagation
                 optimizer.step()
 
                 running_loss += loss.item() * b
                 running_corrects += float(torch.sum(preds == labels.data))
 
+            scheduler.step()
+            # calc data_size after drop_last, although drop_last is False, last batch is discarded
             used_data_sizes = (self.dataset_sizes - self.dataset_sizes % self.batch_size)
             epoch_loss = running_loss / used_data_sizes
             epoch_acc = running_corrects / used_data_sizes
@@ -99,11 +110,13 @@ class Client:
                 time_elapsed // 60, time_elapsed % 60))
 
         time_elapsed = time.time() - since
-        print('Client', self.cid, 'Training complete in {:.0f}m {:.0f}s'.format(
-            time_elapsed // 60, time_elapsed % 60))
+        print('Client', self.cid, 'Epoch {}/{}'.format(epoch, self.local_epoch - 1),
+              ' Training complete in {:.0f}m {:.0f}s'.format(
+                  time_elapsed // 60, time_elapsed % 60))
 
         # save_network(self.model, self.cid, 'last', self.project_dir, self.model_name, gpu_ids)
 
+        # store the trained classifier for next training
         self.classifier = self.model.classifier.classifier
         self.distance = self.optimization.cdw_feature_distance(federated_model, self.old_classifier, self.model)
         self.model.classifier.classifier = nn.Sequential()
@@ -117,6 +130,7 @@ class Client:
     def get_data_sizes(self):
         return self.dataset_sizes
 
+    # get last training loss
     def get_train_loss(self):
         return self.y_loss[-1]
 

@@ -12,6 +12,7 @@ import random
 import torch.optim as optim
 from torchvision import datasets
 
+
 def add_model(dst_model, src_model, dst_no_data, src_no_data):
     if dst_model is None:
         result = copy.deepcopy(src_model)
@@ -22,8 +23,9 @@ def add_model(dst_model, src_model, dst_no_data, src_no_data):
     with torch.no_grad():
         for name1, param1 in params1:
             if name1 in dict_params2:
-                dict_params2[name1].set_(param1.data*src_no_data + dict_params2[name1].data*dst_no_data)
+                dict_params2[name1].set_(param1.data * src_no_data + dict_params2[name1].data * dst_no_data)
     return dst_model
+
 
 def scale_model(model, scale):
     params = model.named_parameters()
@@ -32,6 +34,7 @@ def scale_model(model, scale):
         for name, param in dict_params.items():
             dict_params[name].set_(dict_params[name].data * scale)
     return model
+
 
 def aggregate_models(models, weights):
     """aggregate models based on weights
@@ -45,13 +48,14 @@ def aggregate_models(models, weights):
     total_no_data = weights[0]
     for i in range(1, len(models)):
         model = add_model(model, models[i], total_no_data, weights[i])
-        model = scale_model(model, 1.0 / (total_no_data+weights[i]))
+        model = scale_model(model, 1.0 / (total_no_data + weights[i]))
         total_no_data = total_no_data + weights[i]
     return model
 
 
-class Server():
-    def __init__(self, clients, data, device, project_dir, model_name, num_of_clients, lr, drop_rate, stride, multiple_scale):
+class Server:
+    def __init__(self, clients, data, device, project_dir, model_name, num_of_clients, lr, drop_rate, stride,
+                 multiple_scale):
         self.project_dir = project_dir
         self.data = data
         self.device = device
@@ -70,10 +74,9 @@ class Server():
 
         self.full_model = get_model(750, drop_rate, stride).to(device)
         self.full_model.classifier.classifier = nn.Sequential()
-        self.federated_model=self.full_model
+        self.federated_model = self.full_model
         self.federated_model.eval()
         self.train_loss = []
-
 
     def train(self, epoch, cdw, use_cuda):
         models = []
@@ -89,8 +92,9 @@ class Server():
             models.append(self.clients[i].get_model())
             data_sizes.append(self.clients[i].get_data_sizes())
 
-        if epoch==0:
-            self.L0 = torch.Tensor(loss) 
+        # first round of all clients' training
+        if epoch == 0:
+            self.L0 = torch.Tensor(loss)
 
         avg_loss = sum(loss) / self.num_of_clients
 
@@ -98,11 +102,12 @@ class Server():
         print("number of clients used:", len(models))
         print('Train Epoch: {}, AVG Train Loss among clients of lost epoch: {:.6f}'.format(epoch, avg_loss))
         print()
-        
+
         self.train_loss.append(avg_loss)
-        
+
+        # weights 作为模型参数融合的权重
         weights = data_sizes
-        
+
         if cdw:
             print("cos distance weights:", cos_distance_weights)
             weights = cos_distance_weights
@@ -119,21 +124,23 @@ class Server():
             os.mkdir(dir_name)
         plt.savefig(os.path.join(dir_name, 'train.png'))
         plt.close('all')
-        
+
     def test(self, use_cuda):
-        print("="*10)
+        print("=" * 10)
         print("Start Tesing!")
-        print("="*10)
-        print('We use the scale: %s'%self.multiple_scale)
-        
+        print("=" * 10)
+        print('We use the scale: %s' % self.multiple_scale)
+
         for dataset in self.data.datasets:
             self.federated_model = self.federated_model.eval()
             if use_cuda:
                 self.federated_model = self.federated_model.cuda()
-            
+
             with torch.no_grad():
-                gallery_feature = extract_feature(self.federated_model, self.data.test_loaders[dataset]['gallery'], self.multiple_scale)
-                query_feature = extract_feature(self.federated_model, self.data.test_loaders[dataset]['query'], self.multiple_scale)
+                gallery_feature = extract_feature(self.federated_model, self.data.test_loaders[dataset]['gallery'],
+                                                  self.multiple_scale)
+                query_feature = extract_feature(self.federated_model, self.data.test_loaders[dataset]['query'],
+                                                self.multiple_scale)
 
             result = {
                 'gallery_f': gallery_feature.numpy(),
@@ -144,34 +151,36 @@ class Server():
                 'query_cam': self.data.query_meta[dataset]['cameras']}
 
             scipy.io.savemat(os.path.join(self.project_dir,
-                        'model',
-                        self.model_name,
-                        'pytorch_result.mat'),
-                        result)
-                        
+                                          'model',
+                                          self.model_name,
+                                          'pytorch_result.mat'),
+                             result)
+
             print(self.model_name)
             print(dataset)
 
-            os.system('python evaluate.py --result_dir {} --dataset {}'.format(os.path.join(self.project_dir, 'model', self.model_name), dataset))
+            os.system('python evaluate.py --result_dir {} --dataset {}'.format(
+                os.path.join(self.project_dir, 'model', self.model_name), dataset))
 
     def knowledge_distillation(self, regularization):
         MSEloss = nn.MSELoss().to(self.device)
-        optimizer = optim.SGD(self.federated_model.parameters(), lr=self.lr*0.01, weight_decay=5e-4, momentum=0.9, nesterov=True)
+        optimizer = optim.SGD(self.federated_model.parameters(), lr=self.lr * 0.01, weight_decay=5e-4, momentum=0.9,
+                              nesterov=True)
         self.federated_model.train()
 
-        for _, (x, target) in enumerate(self.data.kd_loader): 
+        for _, (x, target) in enumerate(self.data.kd_loader):
             x, target = x.to(self.device), target.to(self.device)
             # target=target.long()
             optimizer.zero_grad()
-            soft_target = torch.Tensor([[0]*512]*len(x)).to(self.device)
-        
+            soft_target = torch.Tensor([[0] * 512] * len(x)).to(self.device)
+
             for i in self.client_list:
                 i_label = (self.clients[i].generate_soft_label(x, regularization))
                 soft_target += i_label
             soft_target /= len(self.client_list)
-        
+
             output = self.federated_model(x)
-            
+
             loss = MSEloss(output, soft_target)
             loss.backward()
             optimizer.step()
