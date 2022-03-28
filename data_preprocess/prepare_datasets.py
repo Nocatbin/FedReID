@@ -1,12 +1,16 @@
 from glob import glob
 from scipy.misc import imsave, imread
-from zipfile import ZipFile
 from data_preprocess.utils import mkdir
+import os
 
 
 class VIPeR:
-    raw_dir = osp.join(self.root, 'raw')
-    mkdir(raw_dir)
+    def __init__(self, root):
+        self.raw_dir = os.path.join(root, 'raw')
+
+    def prepare(self):
+
+        mkdir(self.raw_dir)
 
     # # Download the raw zip file
     # fpath = osp.join(raw_dir, 'VIPeR.v1.0.zip')
