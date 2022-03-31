@@ -66,13 +66,14 @@ class Data:
         """
         data_path = os.path.join(self.data_dir, dataset, 'pytorch')
         data_path = os.path.join(data_path, 'train' + self.train_all)
+        # 'train' + self.train_all
         image_dataset = datasets.ImageFolder(data_path)
 
         loader = torch.utils.data.DataLoader(
             ImageDataset(image_dataset.imgs, self.data_transforms['train']),
             batch_size=self.batch_size,
             shuffle=True,
-            num_workers=2,  # disable multi thread loader for windows
+            num_workers=0,  # disable multi thread loader for windows
             pin_memory=False)
 
         return loader, image_dataset
@@ -117,7 +118,7 @@ class Data:
                 dataset,
                 batch_size=self.batch_size,
                 shuffle=False,
-                num_workers=8,
+                num_workers=0,
                 pin_memory=True) for key, dataset in {'gallery': gallery_dataset, 'query': query_dataset}.items()}
 
             gallery_cameras, gallery_labels = get_camera_ids(gallery_dataset.imgs)

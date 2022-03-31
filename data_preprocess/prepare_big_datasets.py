@@ -5,7 +5,7 @@ from shutil import copyfile
 
 def prepare_all_big_datasets():
     # datasets=['Market','MSMT17','DukeMTMC-reID','cuhk03-np-detected']
-    datasets = ['Market']
+    datasets = ['MSMT17']
     for i in datasets:
         data_dir = os.path.abspath('C:/Users/15005/Desktop/FedReID/data_preprocess/data/' + i)
 
@@ -114,3 +114,6 @@ def prepare_all_big_datasets():
                     dst_path = val_save_path + '/' + id[0]
                     os.mkdir(dst_path)
                 copyfile(src_path, dst_path + '/' + name)
+
+
+prepare_all_big_datasets()

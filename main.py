@@ -115,11 +115,11 @@ def train():
         server.train(i, args.cdw, use_cuda)
         save_path = os.path.join(dir_name, 'federated_model.pth')
         torch.save(server.federated_model.cpu().state_dict(), save_path)
-        if (i + 1) % 10 == 0:
+#        if (i + 1) % 10 == 0:
+        server.test(use_cuda)
+        if args.kd:
+            server.knowledge_distillation(args.regularization)
             server.test(use_cuda)
-            if args.kd:
-                server.knowledge_distillation(args.regularization)
-                server.test(use_cuda)
         server.draw_curve()
 
 

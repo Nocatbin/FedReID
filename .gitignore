@@ -145,6 +145,3 @@ data_preprocess/data/
 
 # model folder
 model/
-
-# setting folder
-.idea/

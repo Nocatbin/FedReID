@@ -1,36 +1,56 @@
 from glob import glob
-from data_preprocess.utils import mkdir
+from data_preprocess.utils import mkdir, write_json
 import os
 import shutil
+import numpy as np
 
 
 class VIPeR:
-    def __init__(self, root):
+    def __init__(self, root, test_ratio=5):
         self.raw_dir = os.path.join(root, 'VIPeR')
+        self.test_ratio = test_ratio
 
     def prepare(self):
-        output_dir = os.path.join(self.raw_dir, "pytorch")
-        mkdir(output_dir)
+        output_dir_base = os.path.join(self.raw_dir, "pytorch")
+        mkdir(output_dir_base)
+        output_train_base = os.path.join(output_dir_base, "train")
+        mkdir(output_train_base)
+        output_query_base = os.path.join(output_dir_base, "query")
+        mkdir(output_query_base)
+        output_gallery_base = os.path.join(output_dir_base, "gallery")
+        mkdir(output_gallery_base)
 
         cameras = [sorted(glob(os.path.join(self.raw_dir, 'cam_a', '*.bmp'))),
                    sorted(glob(os.path.join(self.raw_dir, 'cam_b', '*.bmp')))]
         assert len(cameras[0]) == len(cameras[1])
+        num_test = len(cameras[0]) // self.test_ratio
         identities = []
-        for pid, (cam1, cam2) in enumerate(zip(*cameras)):
+        for idx, (cam1, cam2) in enumerate(zip(*cameras)):
             images = []
-            id1 = cam1.split('_')
-            id2 = cam2.split('_')
+            # <id>_<view>.bmp
+            id1 = int(os.path.basename(cam1).split('_')[0])
+            id2 = int(os.path.basename(cam2).split('_')[0])
             if id1 != id2:
                 print("id not match")
                 continue
-            # view-0
-            # fname = '{:08d}_{:02d}_{:04d}.jpg'.format(pid, 0, 0)
-            # imsave(os.path.join(images_dir, fname), imread(cam1))
-            images.append([cam1])
-            # view-1
-            # fname = '{:08d}_{:02d}_{:04d}.jpg'.format(pid, 1, 0)
-            # imsave(os.path.join(images_dir, fname), imread(cam2))
-            images.append([cam2])
+            # 0000_c1.jpg
+            cam1_save_name = '{:04d}_c{:01d}.jpg'.format(id1, 1)
+            cam2_save_name = '{:04d}_c{:01d}.jpg'.format(id2, 2)
+            # 先存20%的query和gallery作为test，剩下的作为train
+            if idx > num_test:
+                train_save_dir = os.path.join(output_train_base, "{:04d}".format(id1))
+                mkdir(train_save_dir)
+                shutil.copyfile(cam1, os.path.join(train_save_dir, cam1_save_name))
+                shutil.copyfile(cam2, os.path.join(train_save_dir, cam2_save_name))
+            else:
+                query_save_dir = os.path.join(output_query_base, "{:04d}".format(id1))
+                mkdir(query_save_dir)
+                gallery_save_dir = os.path.join(output_gallery_base, "{:04d}".format(id1))
+                mkdir(gallery_save_dir)
+                shutil.copyfile(cam1, os.path.join(query_save_dir, cam1_save_name))
+                shutil.copyfile(cam2, os.path.join(gallery_save_dir, cam2_save_name))
+            images.append([cam1_save_name])
+            images.append([cam2_save_name])
             identities.append(images)
 
         # Save meta information into a json file
@@ -38,19 +58,56 @@ class VIPeR:
                 'identities': identities}
         write_json(meta, os.path.join(self.raw_dir, 'meta.json'))
 
-        # Randomly create ten training and test split
-        num = len(identities)
-        splits = []
-        for _ in range(10):
-            pids = np.random.permutation(num).tolist()
-            trainval_pids = sorted(pids[:num // 2])
-            test_pids = sorted(pids[num // 2:])
-            split = {'trainval': trainval_pids,
-                     'query': test_pids,
-                     'gallery': test_pids}
-            splits.append(split)
-        write_json(splits, os.path.join(self.root, 'splits.json'))
+
+class CUHK01:
+    def __init__(self, root, test_ratio=5):
+        self.raw_dir = os.path.join(root, 'CUHK01')
+        self.test_ratio = test_ratio
+
+    def prepare(self):
+        output_dir_base = os.path.join(self.raw_dir, "pytorch")
+        mkdir(output_dir_base)
+        output_train_base = os.path.join(output_dir_base, "train")
+        mkdir(output_train_base)
+        output_query_base = os.path.join(output_dir_base, "query")
+        mkdir(output_query_base)
+        output_gallery_base = os.path.join(output_dir_base, "gallery")
+        mkdir(output_gallery_base)
+
+        raw_images = sorted(glob(os.path.join(self.raw_dir, 'campus', '*.png')))
+        os.listdir()
+        num_test = len(raw_images) // self.test_ratio
+        identities = []
+        last_id = 'init'
+        for image in raw_images:
+            images = []
+            # <id>_<view>.png
+            # <:04d><:03d>.png
+            id = os.path.basename(image)[:4]
+            view = os.path.basename(image)[4:7]
+            # 0000_c1.jpg
+            save_name = '{:04d}_c{:03d}.jpg'.format(int(id), int(view))
+            # 先存20%的query和gallery作为test，剩下的作为train
+            if idx > num_test:
+                train_save_dir = os.path.join(output_train_base, "{:04d}".format(id1))
+                mkdir(train_save_dir)
+                shutil.copyfile(cam1, os.path.join(train_save_dir, cam1_save_name))
+                shutil.copyfile(cam2, os.path.join(train_save_dir, cam2_save_name))
+            else:
+                query_save_dir = os.path.join(output_query_base, "{:04d}".format(id1))
+                mkdir(query_save_dir)
+                gallery_save_dir = os.path.join(output_gallery_base, "{:04d}".format(id1))
+                mkdir(gallery_save_dir)
+                shutil.copyfile(cam1, os.path.join(query_save_dir, cam1_save_name))
+                shutil.copyfile(cam2, os.path.join(gallery_save_dir, cam2_save_name))
+            images.append([cam1_save_name])
+            identities.append(images)
+
+        # Save meta information into a json file
+        meta = {'name': 'VIPeR', 'shot': 'single', 'num_cameras': 2,
+                'identities': identities}
+        write_json(meta, os.path.join(self.raw_dir, 'meta.json'))
 
 
-data = VIPeR("./data_preprocess/data")
+data = CUHK01("./data")
 data.prepare()
