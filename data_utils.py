@@ -17,6 +17,7 @@ class ImageDataset(Dataset):
 
     def __getitem__(self, index):
         data, label = self.imgs[index]
+        label = int(os.path.basename(data)[:4])
         return self.transform(Image.open(data)), label
 
 

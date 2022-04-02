@@ -1,7 +1,7 @@
 import os
 import shutil
 # from preprocess_small_datasets import preprocess_all_small_datasets
-from prepare_datasets import VIPeR
+from prepare_datasets import VIPeR, CUHK01
 
 
 def prepare_all_small_datasets(args):
@@ -9,10 +9,11 @@ def prepare_all_small_datasets(args):
     # '3dpes', 'cuhk01', 'cuhk02', 'ilids', 'prid', 'viper'
     for dataset in ['viper']:
         if dataset == 'viper' or dataset == 'VIPeR':
-            data = VIPeR("./data_preprocess/data")
+            data = VIPeR("./data")
             data.prepare()
         elif dataset == 'cuhk01' or dataset == 'CUHK01':
-            print("Not Implemented")
+            data = CUHK01("./data")
+            data.prepare()
         # os.mkdir('data/' + dataset + '/pytorch')
         #
         # files = ['data/' + dataset + '/train.txt', 'data/' + dataset + '/val.txt']

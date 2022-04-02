@@ -78,35 +78,36 @@ class CUHK01:
         os.listdir()
         num_test = len(raw_images) // self.test_ratio
         identities = []
-        last_id = 'init'
+        last_id = -999
+        idx = 0
         for image in raw_images:
             images = []
             # <id>_<view>.png
             # <:04d><:03d>.png
-            id = os.path.basename(image)[:4]
-            view = os.path.basename(image)[4:7]
+            id = int(os.path.basename(image)[:4])
+            view = int(os.path.basename(image)[4:7])
             # 0000_c1.jpg
-            save_name = '{:04d}_c{:03d}.jpg'.format(int(id), int(view))
+            save_name = '{:04d}_c{:03d}.jpg'.format(id, view)
             # 先存20%的query和gallery作为test，剩下的作为train
             if idx > num_test:
-                train_save_dir = os.path.join(output_train_base, "{:04d}".format(id1))
+                train_save_dir = os.path.join(output_train_base, "{:04d}".format(id))
                 mkdir(train_save_dir)
-                shutil.copyfile(cam1, os.path.join(train_save_dir, cam1_save_name))
-                shutil.copyfile(cam2, os.path.join(train_save_dir, cam2_save_name))
+                shutil.copyfile(image, os.path.join(train_save_dir, save_name))
             else:
-                query_save_dir = os.path.join(output_query_base, "{:04d}".format(id1))
-                mkdir(query_save_dir)
-                gallery_save_dir = os.path.join(output_gallery_base, "{:04d}".format(id1))
-                mkdir(gallery_save_dir)
-                shutil.copyfile(cam1, os.path.join(query_save_dir, cam1_save_name))
-                shutil.copyfile(cam2, os.path.join(gallery_save_dir, cam2_save_name))
-            images.append([cam1_save_name])
+                if id != last_id:
+                    # 每个id 第一张图作为query
+                    query_save_dir = os.path.join(output_query_base, "{:04d}".format(id))
+                    mkdir(query_save_dir)
+                    shutil.copyfile(image, os.path.join(query_save_dir, save_name))
+                else:
+                    # 剩下的都作为gallery
+                    gallery_save_dir = os.path.join(output_gallery_base, "{:04d}".format(id))
+                    mkdir(gallery_save_dir)
+                    shutil.copyfile(image, os.path.join(gallery_save_dir, save_name))
+                last_id = id
+            images.append(image)
             identities.append(images)
-
-        # Save meta information into a json file
-        meta = {'name': 'VIPeR', 'shot': 'single', 'num_cameras': 2,
-                'identities': identities}
-        write_json(meta, os.path.join(self.raw_dir, 'meta.json'))
+            idx += 1
 
 
 data = CUHK01("./data")
