@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 import copy
 from optimization import Optimization
+from torch.utils.tensorboard import SummaryWriter
 
 
 class Client:
@@ -81,7 +82,9 @@ class Client:
                     inputs, labels = Variable(inputs), Variable(labels)
 
                 optimizer.zero_grad()
-
+                # writer = SummaryWriter('logs')
+                # writer.add_graph(self.model, inputs)
+                # print(inputs.shape)
                 outputs = self.model(inputs)
                 _, preds = torch.max(outputs.data, 1)
                 loss = criterion(outputs, labels)

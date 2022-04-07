@@ -133,7 +133,6 @@ class Server:
 
         for dataset in self.data.datasets:
             self.federated_model = self.federated_model.eval()
-            print(self.federated_model)
             if use_cuda:
                 self.federated_model = self.federated_model.cuda()
 

@@ -1,8 +1,8 @@
+from argparse import ArgumentParser
 from glob import glob
 from data_preprocess.utils import mkdir, write_json
 import os
 import shutil
-import numpy as np
 
 
 class VIPeR:
@@ -23,7 +23,7 @@ class VIPeR:
         cameras = [sorted(glob(os.path.join(self.raw_dir, 'cam_a', '*.bmp'))),
                    sorted(glob(os.path.join(self.raw_dir, 'cam_b', '*.bmp')))]
         assert len(cameras[0]) == len(cameras[1])
-        num_test = len(cameras[0]) // self.test_ratio
+        num_test = len(cameras[0]) - (len(cameras[0]) // self.test_ratio)
         identities = []
         for idx, (cam1, cam2) in enumerate(zip(*cameras)):
             images = []
@@ -34,10 +34,10 @@ class VIPeR:
                 print("id not match")
                 continue
             # 0000_c1.jpg
-            cam1_save_name = '{:04d}_c{:01d}.jpg'.format(id1, 1)
-            cam2_save_name = '{:04d}_c{:01d}.jpg'.format(id2, 2)
+            cam1_save_name = '{:04d}_{:03d}_{:03d}.jpg'.format(id1, 1, 0)
+            cam2_save_name = '{:04d}_{:03d}_{:03d}.jpg'.format(id2, 2, 0)
             # 先存20%的query和gallery作为test，剩下的作为train
-            if idx > num_test:
+            if idx < num_test:
                 train_save_dir = os.path.join(output_train_base, "{:04d}".format(id1))
                 mkdir(train_save_dir)
                 shutil.copyfile(cam1, os.path.join(train_save_dir, cam1_save_name))
@@ -52,7 +52,6 @@ class VIPeR:
             images.append([cam1_save_name])
             images.append([cam2_save_name])
             identities.append(images)
-
         # Save meta information into a json file
         meta = {'name': 'VIPeR', 'shot': 'single', 'num_cameras': 2,
                 'identities': identities}
@@ -76,7 +75,7 @@ class CUHK01:
 
         raw_images = sorted(glob(os.path.join(self.raw_dir, 'campus', '*.png')))
         os.listdir()
-        num_test = len(raw_images) // self.test_ratio
+        num_test = len(raw_images) - (len(raw_images) // self.test_ratio)
         identities = []
         last_id = -999
         idx = 0
@@ -87,9 +86,9 @@ class CUHK01:
             id = int(os.path.basename(image)[:4])
             view = int(os.path.basename(image)[4:7])
             # 0000_c1.jpg
-            save_name = '{:04d}_c{:03d}.jpg'.format(id, view)
+            save_name = '{:04d}_{:03d}_{:03d}.jpg'.format(id, 1, view)
             # 先存20%的query和gallery作为test，剩下的作为train
-            if idx > num_test:
+            if idx < num_test:
                 train_save_dir = os.path.join(output_train_base, "{:04d}".format(id))
                 mkdir(train_save_dir)
                 shutil.copyfile(image, os.path.join(train_save_dir, save_name))
@@ -110,5 +109,167 @@ class CUHK01:
             idx += 1
 
 
-data = CUHK01("./data")
-data.prepare()
+def get_save_name(src_name, dataset):
+    save_name = src_name
+    if dataset == 'MSMT17':
+        # ['0000', 'c14', '0030.jpg']
+        group = src_name.split('_')
+        save_name = '{:04d}_{:03d}_{:d}.jpg'.format(int(group[0]), int(group[1][1:]), int(group[2][:-4]))
+        print(save_name)
+    elif dataset == "Market":
+        # 0001_c1s1_001051_00.jpg
+        group = src_name.split('_')
+        if int(group[0]) == -1:
+            print("-1 detected")
+        save_name = '{:04d}_{:03d}_{:d}.jpg'.format(int(group[0]), int(group[1][1:2]), int(group[2]))
+        print(save_name)
+    elif dataset == "DukeMTMC-reID":
+        # 0001_c2_f0046182.jpg
+        group = src_name.split('_')
+        save_name = '{:04d}_{:03d}_{:d}.jpg'.format(int(group[0]), int(group[1][1:]), int(group[3][1:-4]))
+        print(save_name)
+    return save_name
+
+
+def prepare_all_big_datasets():
+    # datasets=['Market','MSMT17','DukeMTMC-reID','cuhk03-np-detected']
+    datasets = ['Market', 'MSMT17']
+    for i in datasets:
+        data_dir = os.path.abspath('./data/' + i)
+
+        # You only need to change this line to your dataset download path
+        download_path = data_dir
+
+        if not os.path.isdir(download_path):
+            print('please change the download_path')
+
+        save_path = os.path.join(download_path, 'pytorch')
+        if not os.path.isdir(save_path):
+            os.mkdir(save_path)
+        # -----------------------------------------
+        # query
+        query_path = os.path.join(download_path, 'query')
+        query_save_path = os.path.join(download_path, 'pytorch/query')
+        if not os.path.isdir(query_save_path):
+            os.mkdir(query_save_path)
+
+        for root, dirs, files in os.walk(query_path, topdown=True):
+            for name in files:
+                if not name[-3:] == 'jpg' and not name[-3:] == 'png':
+                    continue
+                id = name.split('_')
+                src_path = query_path + '/' + name
+                dst_path = query_save_path + '/' + id[0]
+                if not os.path.isdir(dst_path):
+                    os.mkdir(dst_path)
+                name = get_save_name(name, i)
+                shutil.copyfile(src_path, dst_path + '/' + name)
+
+        # -----------------------------------------
+        # multi-query gt_bbox as query
+        query_path = os.path.join(download_path, 'gt_bbox')
+        # for dukemtmc-reid, we do not need multi-query, does not have gt_bbox
+        if os.path.isdir(query_path):
+            query_save_path = os.path.join(download_path, 'pytorch/multi-query')
+            if not os.path.isdir(query_save_path):
+                os.mkdir(query_save_path)
+
+            for root, dirs, files in os.walk(query_path, topdown=True):
+                for name in files:
+                    if not name[-3:] == 'jpg' and not name[-3:] == 'png':
+                        continue
+                    id = name.split('_')
+                    src_path = query_path + '/' + name
+                    dst_path = query_save_path + '/' + id[0]
+                    if not os.path.isdir(dst_path):
+                        os.mkdir(dst_path)
+                    name = get_save_name(name, i)
+                    shutil.copyfile(src_path, dst_path + '/' + name)
+
+        # -----------------------------------------
+        # gallery / training set
+        gallery_path = os.path.join(download_path, 'bounding_box_test')
+        gallery_save_path = os.path.join(download_path, 'pytorch/gallery')
+        if not os.path.isdir(gallery_save_path):
+            os.mkdir(gallery_save_path)
+
+        for root, dirs, files in os.walk(gallery_path, topdown=True):
+            for name in files:
+                if not name[-3:] == 'jpg' and not name[-3:] == 'png':
+                    continue
+                id = name.split('_')
+                src_path = gallery_path + '/' + name
+                dst_path = gallery_save_path + '/' + id[0]
+                if not os.path.isdir(dst_path):
+                    os.mkdir(dst_path)
+                name = get_save_name(name, i)
+                shutil.copyfile(src_path, dst_path + '/' + name)
+
+        # ---------------------------------------
+        # train_all
+        train_path = download_path + '/bounding_box_train'
+        train_save_path = download_path + '/pytorch/train_all'
+        if not os.path.isdir(train_save_path):
+            os.mkdir(train_save_path)
+
+        for root, dirs, files in os.walk(train_path, topdown=True):
+            for name in files:
+                if not name[-3:] == 'jpg' and not name[-3:] == 'png':
+                    continue
+                id = name.split('_')
+                src_path = train_path + '/' + name
+                dst_path = train_save_path + '/' + id[0]
+                if not os.path.isdir(dst_path):
+                    os.mkdir(dst_path)
+                name = get_save_name(name, i)
+                shutil.copyfile(src_path, dst_path + '/' + name)
+
+        # ---------------------------------------
+        # train_val
+        train_path = download_path + '/bounding_box_train'
+        train_save_path = download_path + '/pytorch/train'
+        val_save_path = download_path + '/pytorch/val'
+        if not os.path.isdir(train_save_path):
+            os.mkdir(train_save_path)
+            os.mkdir(val_save_path)
+
+        for root, dirs, files in os.walk(train_path, topdown=True):
+            for name in files:
+                if not name[-3:] == 'jpg' and not name[-3:] == 'png':
+                    continue
+                id = name.split('_')
+                src_path = train_path + '/' + name
+                dst_path = train_save_path + '/' + id[0]
+                if not os.path.isdir(dst_path):
+                    os.mkdir(dst_path)
+                    # first image of each person(id) is used as val image
+                    dst_path = val_save_path + '/' + id[0]
+                    os.mkdir(dst_path)
+                name = get_save_name(name, i)
+                shutil.copyfile(src_path, dst_path + '/' + name)
+
+
+if __name__ == '__main__':
+    parser = ArgumentParser(
+        description="Create lists of image file and label")
+    parser.add_argument(
+        '--dataset_dir', type=str, default=' ',
+        help="Directory of a formatted dataset")
+    parser.add_argument(
+        '--output_dir', type=str, default=' ',
+        help="Output directory for the lists")
+    parser.add_argument(
+        '--val-ratio', type=float, default=0.2,
+        help="Ratio between validation and trainval data. Default 0.2.")
+    args = parser.parse_args()
+    print(args.dataset_dir)
+
+    prepare_all_big_datasets()
+    # '3dpes', 'cuhk01', 'cuhk02', 'ilids', 'prid', 'viper'
+    for dataset in ['viper', 'cuhk01']:
+        if dataset == 'viper' or dataset == 'VIPeR':
+            data = VIPeR("./data")
+            data.prepare()
+        elif dataset == 'cuhk01' or dataset == 'CUHK01':
+            data = CUHK01("./data")
+            data.prepare()

@@ -85,19 +85,19 @@ class ClassBlock(nn.Module):
 
 
 # Define the ResNet50-based Model
-class ft_net(nn.Module):
+class ResNet(nn.Module):
 
     def __init__(self, class_num, droprate=0.5, stride=2):
-        super(ft_net, self).__init__()
+        super(ResNet, self).__init__()
 
-        model_ft = models.resnet50(pretrained=True)
-        # model_ft=torch.load('saved_res50.pkl')
+        resnet50 = models.resnet50(pretrained=True)
+        # resnet50=torch.load('saved_res50.pkl')
         # avg pooling to global pooling
         if stride == 1:
-            model_ft.layer4[0].downsample[0].stride = (1, 1)
-            model_ft.layer4[0].conv2.stride = (1, 1)
-        model_ft.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.model = model_ft
+            resnet50.layer4[0].downsample[0].stride = (1, 1)
+            resnet50.layer4[0].conv2.stride = (1, 1)
+        resnet50.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.model = resnet50
         # 2048 = output of RESNET50 before classifier
         self.classifier = ClassBlock(2048, class_num, droprate)
 
@@ -124,7 +124,7 @@ python model.py
 if __name__ == '__main__':
     # Here I left a simple forward function.
     # Test the model, before you train it.
-    net = ft_net(751, stride=1)
+    net = ResNet(751, stride=1)
     net.classifier = nn.Sequential()
     print(net)
     input = Variable(torch.FloatTensor(8, 3, 256, 128))

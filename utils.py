@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import os
-from model import ft_net
+from model import ResNet
 from torch.autograd import Variable
 
 from torchvision import datasets, transforms
@@ -42,7 +42,7 @@ def save_network(network, cid, epoch_label, project_dir, name, gpu_ids):
 # class_sizes only affects classifier(aka full connection layer)
 # saved params(state_dict)
 def get_model(class_sizes, drop_rate, stride):
-    model = ft_net(class_sizes, drop_rate, stride)
+    model = ResNet(class_sizes, drop_rate, stride)
     return model
 
 

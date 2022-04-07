@@ -154,9 +154,12 @@ def get_camera_ids(img_paths):
     for path, v in img_paths:
         filename = os.path.basename(path)
         if filename[:3] != 'cam':
-            label = filename[0:4]
-            camera = filename.split('c')[1]
-            camera = camera.split('s')[0]
+            group = filename.split('_')
+            label = group[0]
+            if group[2][:-4] == '.jpg':
+                camera = group[1][:-4]
+            else:
+                camera = group[1]
         else:
             label = filename.split('_')[2]
             camera = filename.split('_')[1]
