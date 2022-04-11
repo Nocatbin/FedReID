@@ -45,10 +45,10 @@ def weights_init_classifier(m):
 
 # Defines the new fc layer and classification layer
 # |--Linear--|--bn--|--relu--|--Linear--|
-class ClassBlock(nn.Module):
+class ClassificationModule(nn.Module):
     def __init__(self, input_dim, class_num, droprate, relu=False, bnorm=True, num_bottleneck=512, linear=True,
                  return_f=False):
-        super(ClassBlock, self).__init__()
+        super(ClassificationModule, self).__init__()
         self.return_f = return_f
         add_block = []
         if linear:
@@ -99,7 +99,7 @@ class ResNet(nn.Module):
         resnet50.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.model = resnet50
         # 2048 = output of RESNET50 before classifier
-        self.classifier = ClassBlock(2048, class_num, droprate)
+        self.classifier = ClassificationModule(2048, class_num, droprate)
 
     def forward(self, x):
         x = self.model.conv1(x)
