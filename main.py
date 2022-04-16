@@ -30,7 +30,7 @@ version = torch.__version__
 
 parser = argparse.ArgumentParser(description='Training')
 parser.add_argument('--gpu_ids', default='0', type=str, help='gpu_ids: e.g. 0  0,1,2  0,2')
-parser.add_argument('--model_name', default='ft_ResNet50', type=str, help='output model name')
+parser.add_argument('--model_name', default='ResNet50', type=str, help='output model name')
 parser.add_argument('--project_dir', default='.', type=str, help='project path')
 parser.add_argument('--data_dir', default='data', type=str, help='training dir path')
 # parser.add_argument('--datasets',default='Market,DukeMTMC-reID,cuhk03-np-detected,cuhk01,MSMT17,viper,prid,3dpes,ilids',type=str, help='datasets used')
