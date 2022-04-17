@@ -1,3 +1,4 @@
+import os.path
 import time
 import torch
 from utils import get_optimizer, get_model
@@ -35,7 +36,7 @@ class Client:
         # print(self.model)
         self.distance = 0
         self.optimization = Optimization(self.train_loader, self.device)
-        # print("class name size",class_names_size[cid])
+        self.log_path = os.path.join(self.project_dir, 'model\\ResNet50', cid + '_train_log.csv')
 
     # training based on federated_model's params
     def train(self, federated_model, use_cuda):
@@ -104,7 +105,9 @@ class Client:
 
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(
                 'train', epoch_loss, epoch_acc))
-
+            train_logger = open(self.log_path, 'a')
+            train_logger.write('%f,%f\n' % (epoch_loss, epoch_acc))
+            train_logger.close()
             self.y_loss.append(epoch_loss)
             self.y_err.append(1.0 - epoch_acc)
 

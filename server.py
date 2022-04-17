@@ -108,6 +108,7 @@ class Server:
         # weights 作为模型参数融合的权重
         weights = data_sizes
 
+
         if cdw:
             print("cos distance weights:", cos_distance_weights)
             weights = cos_distance_weights

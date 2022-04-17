@@ -90,7 +90,7 @@ class ResNet(nn.Module):
     def __init__(self, class_num, droprate=0.5, stride=2):
         super(ResNet, self).__init__()
 
-        resnet50 = models.resnet50(pretrained=True)
+        resnet50 = models.resnet50(pretrained=False)
         # resnet50=torch.load('saved_res50.pkl')
         # avg pooling to global pooling
         if stride == 1:

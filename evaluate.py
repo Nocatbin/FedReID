@@ -1,3 +1,4 @@
+import datetime
 import scipy.io
 import torch
 import numpy as np
@@ -92,5 +93,11 @@ for i in range(len(query_label)):
 CMC = CMC.float()
 CMC = CMC / len(query_label)  # average CMC
 print(args.dataset + ' Rank@1:%f Rank@5:%f Rank@10:%f mAP:%f' % (CMC[0], CMC[4], CMC[9], ap / len(query_label)))
+test_log_file = os.path.join(args.result_dir, args.dataset + '_test_log.csv')
+log = open(test_log_file, 'a')
+curr_time = datetime.datetime.now()
+time_str = curr_time.strftime("%H:%M:%S")
+log.write('%f,%f,%f,%f,%s\n' % (CMC[0], CMC[4], CMC[9], ap / len(query_label), time_str))
+log.close()
 print('-' * 15)
 print()
